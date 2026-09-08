@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    // Node-style CommonJS resolution + a bare (baseUrl-less) "paths" map is
+    // deprecated ahead of TypeScript 7's native compiler, but is what the
+    // whole toolchain here (ts-jest, ts-node, Nest's tsc builder) is built
+    // for — TS is pinned below 6.1 for the same reason (see package.json).
+    "ignoreDeprecations": "6.0",
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "declaration": false,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictBindCallApply": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "types": ["node", "jest"],
+    "paths": {
+      "@shared/*": ["./src/shared/*"],
+      "@types": ["./src/type.ts"],
+      "@persistence/*": ["./src/shared/database/persistence/*"],
+      "@decorator": ["./src/utils/decorator.ts"],
+      "@utils/*": ["./src/utils/*"]
+    }
+  },
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
+  }
+}
