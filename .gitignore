@@ -1,2 +1,26 @@
 .claude
 CLAUDE.md
+
+# dependencies
+node_modules
+
+# build output
+dist
+*.tsbuildinfo
+
+# tests
+coverage
+
+# env
+.env
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+
+# editor / OS
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea

@@ -301,7 +301,7 @@ signature verification against tampered and stale requests.
 
 | Slice | Scope                                                                 | Status |
 | ----- | --------------------------------------------------------------------- | ------ |
-| 0     | Project scaffold, Docker, config, health                              | ⬜     |
+| 0     | Project scaffold, Docker, config, health                              | ✅     |
 | 1     | Platform spine — errors, filters, logging, `@Api()`, `BaseRepository` | ⬜     |
 | 2     | Tenants + API-key auth                                                | ⬜     |
 | 3     | Codify the module pattern                                             | ⬜     |

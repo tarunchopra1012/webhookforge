@@ -1,0 +1,16 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^@shared/(.*)$": "<rootDir>/../src/shared/$1",
+    "^@types$": "<rootDir>/../src/type.ts",
+    "^@persistence/(.*)$": "<rootDir>/../src/shared/database/persistence/$1",
+    "^@decorator$": "<rootDir>/../src/utils/decorator.ts",
+    "^@utils/(.*)$": "<rootDir>/../src/utils/$1"
+  }
+}
