@@ -70,23 +70,50 @@ WebhookForge is a from-scratch implementation of that delivery layer.
 
 ### Layer contract
 
-Domain-Driven Design with a strict, enforced flow:
+Hexagonal architecture (ports and adapters) with a DDD module layout:
 
 ```
-HTTP → Guard → Controller → Service → UseCase → Repository → Mapper ↔ Persistence
+HTTP → Guard → Interceptor → Controller → UseCase → [Service] → RepositoryPort
+                                                              ⇅
+                                     Repository → Mapper ↔ Persistence → Postgres
 ```
 
-| Layer           | Responsibility                                                             |
-| --------------- | -------------------------------------------------------------------------- |
-| **Controller**  | HTTP only. Validates DTO, calls one Service method, throws on `AppError`.  |
-| **Service**     | Thin facade. Delegates to UseCases. No logic.                              |
-| **UseCase**     | All business logic. One use case = one operation.                          |
-| **Repository**  | All DB access. Returns domain types, never entities. Always tenant-scoped. |
-| **Mapper**      | `toDomain()` / `toPersistence()`. Field mapping only.                      |
-| **Persistence** | TypeORM entity. Table shape only.                                          |
+| Layer              | Responsibility                                                              |
+| ------------------ | --------------------------------------------------------------------------- |
+| **Controller**     | HTTP only. Validates the DTO, calls one UseCase, throws on `AppError`.      |
+| **UseCase**        | Application service. All orchestration and business rules. One per operation. |
+| **Service**        | Domain service. Optional — only where an aggregate's behaviour has more than one caller. |
+| **RepositoryPort** | Abstract class owned by the domain. States what it needs from storage.      |
+| **Repository**     | TypeORM adapter implementing the port. Returns domain types. Tenant-scoped. |
+| **Mapper**         | `toDomain()` / `toPersistence()`. Field mapping only.                       |
+| **Persistence**    | TypeORM entity. Table shape only.                                           |
 
-**Errors are returned, not thrown.** Service, UseCase, and Repository methods
-return `Promise<T | AppError>`. Only the Controller throws, after an
+**The dependency arrow points inward.** UseCases inject
+`SubscriptionRepositoryPort`, an abstract class living in the domain module — not
+the TypeORM class that implements it. The module wires the two together:
+
+```ts
+providers: [
+  ...useCases,
+  { provide: SubscriptionRepositoryPort, useClass: SubscriptionRepository },
+];
+```
+
+Abstract class rather than `interface` because TypeScript interfaces are erased
+at compile time and cannot serve as dependency-injection tokens. The practical
+payoff is that nothing above the adapter knows a database exists: swapping the
+store, or running a use case against an in-memory fake in a test, is a one-line
+change in one file.
+
+**There is no thin facade layer.** A Service that only forwards a call is a file
+that does nothing, so Controllers call UseCases directly. A domain Service is
+added only when an aggregate owns behaviour that a second caller already needs —
+`DeliveryService` owns the retry state machine shared by the ingest path, the
+retry worker and the sweeper. That one is earned; a `SubscriptionService`
+wrapping `save` and `findById` would not be.
+
+**Errors are returned, not thrown.** UseCase, Service, Port and Repository
+methods return `Promise<T | AppError>`. Only the Controller throws, after an
 `instanceof` check. This makes error paths explicit in the type signature rather
 than invisible control flow.
 
@@ -306,8 +333,11 @@ src/
 └── console/            operator console (server-rendered)
 ```
 
-Each domain module follows the same shape: `controller · service · module · dto ·
-types` plus an `initiator/` directory holding one use case per operation.
+Each domain module follows the same shape: `controller · module · dto · types ·
+repository.port` plus an `initiator/` directory holding one use case per
+operation. Ports sit with the domain; their TypeORM adapters sit under
+`shared/database/`. A `service.ts` appears only in modules whose aggregate earned
+one.
 
 ---
 
