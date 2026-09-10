@@ -1,0 +1,27 @@
+# Keep the build context small and keep secrets out of image layers.
+
+node_modules
+dist
+coverage
+*.tsbuildinfo
+
+.git
+.gitignore
+.github
+
+# Local agent config — not part of the application.
+.claude
+CLAUDE.md
+
+# Secrets never enter an image. Compose injects them at run time instead.
+.env
+.env.*
+!.env.example
+
+logs
+*.log
+npm-debug.log*
+
+.DS_Store
+.vscode
+.idea

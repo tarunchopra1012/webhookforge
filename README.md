@@ -154,27 +154,104 @@ Node.js 20+, Docker, and Docker Compose.
 
 ### Run it
 
+Two ways, both from one `.env`.
+
+**Dependencies in Docker, app on the host.** The faster loop — hot reload with
+no container rebuild. This is the default.
+
 ```bash
 git clone https://github.com/<you>/webhookforge.git
 cd webhookforge
 cp .env.example .env
 
-docker compose up -d          # Postgres, Redis, Prometheus, Grafana
 npm install
-npm run migration:run
+npm run infra:start           # Postgres 16 + Redis 7
 npm run start:dev             # API on :3000
-npm run start:worker          # delivery workers
 ```
 
-| URL                             | What                                |
-| ------------------------------- | ----------------------------------- |
-| `http://localhost:3000/health`  | Liveness — process, database, Redis |
-| `http://localhost:3000/api`     | Swagger UI                          |
-| `http://localhost:3000/console` | Operator console (demo)             |
-| `http://localhost:3000/metrics` | Prometheus metrics                  |
-| `http://localhost:3001`         | Grafana dashboards                  |
+**Everything in Docker.** One command, nothing installed on the host but Docker.
 
-### Try it
+```bash
+cp .env.example .env
+npm run dev:start             # builds the image, starts all three
+```
+
+Source is bind-mounted, so hot reload works in the container too. Inside the
+compose network the app reaches its dependencies by service name — the compose
+file overrides `POSTGRES_HOST` and `REDIS_HOST`, so the same `.env` drives both
+paths without edits.
+
+| Script               | Does                                                       |
+| -------------------- | ---------------------------------------------------------- |
+| `npm run infra:start`| Postgres + Redis only                                      |
+| `npm run infra:stop` | Stop them, keep the data                                   |
+| `npm run dev:start`  | Build and start everything, app included                   |
+| `npm run dev:stop`   | Stop everything, keep the data                             |
+| `npm run dev:restart`| `dev:stop` then `dev:start`                                |
+| `npm run dev:reset`  | Stop everything **and delete the Postgres and Redis data** |
+| `npm run dev:logs`   | Tail the app container                                     |
+
+| URL                            | What                                |
+| ------------------------------ | ----------------------------------- |
+| `http://localhost:3000/health` | Liveness — process, database, Redis |
+
+### Verify it
+
+```bash
+curl -s localhost:3000/health
+```
+
+Expect `200`, with `database`, `redis` and `process` all reporting `up`.
+
+The health check queries its dependencies rather than reporting a fixed value.
+To confirm that, stop one and watch the status turn:
+
+```bash
+docker compose stop redis && sleep 2 && curl -s -o /dev/null -w '%{http_code}\n' localhost:3000/health && docker compose start redis
+```
+
+`503` with `redis: down` while it is stopped, back to `200` once the client
+reconnects — no app restart needed.
+
+### Docker layout
+
+`Dockerfile` is multi-stage:
+
+| Stage   | Purpose                                                                 |
+| ------- | ----------------------------------------------------------------------- |
+| `deps`  | `npm ci` alone, so a source change does not reinstall dependencies       |
+| `dev`   | Hot-reload target used by the `app` compose profile                     |
+| `build` | Compiles TypeScript, then prunes dev dependencies in place              |
+| `prod`  | `dist` + production dependencies only. No source, no toolchain, non-root |
+
+Database and Redis data live in **named volumes**, not a bind-mounted host
+directory. On macOS a bind mount crosses the Docker VM boundary through a
+file-sync layer on every write, which is the worst case for Postgres' many
+small random writes; a named volume stays inside the VM's own filesystem.
+`npm run dev:reset` wipes them.
+
+The `app` service sits behind a compose profile, so a bare `docker compose up -d`
+brings up dependencies only.
+
+### Not built yet
+
+Everything below is the intended shape of the finished service. It does **not**
+work today. See [build status](#build-status) for what is actually implemented.
+
+| URL                             | What                | Arrives with |
+| ------------------------------- | ------------------- | ------------ |
+| `http://localhost:3000/api`     | Swagger UI          | Slice 1      |
+| `http://localhost:3000/metrics` | Prometheus metrics  | Slice 8      |
+| `http://localhost:3001`         | Grafana dashboards  | Slice 8      |
+| `http://localhost:3000/console` | Operator console    | Slice 9      |
+
+| Command                    | Arrives with |
+| -------------------------- | ------------ |
+| `npm run migration:run`    | Slice 1      |
+| `npm run start:worker`     | Slice 6      |
+| `npm run load-test`        | Slice 10     |
+
+The API the slices are building toward:
 
 ```bash
 # 1. Create a tenant and issue an API key
