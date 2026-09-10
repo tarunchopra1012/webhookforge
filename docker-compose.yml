@@ -29,6 +29,51 @@ services:
       timeout: 5s
       retries: 10
 
+  # Opt-in. `docker compose up -d` starts Postgres and Redis only, which is the
+  # fast local loop: run the app natively with `npm run start:dev` for hot
+  # reload without a container rebuild. `npm run dev:start` enables this
+  # profile and runs everything in Docker instead — the one-command demo, and
+  # the path Slice 7 uses to run two instances against one distributed lock.
+  app:
+    profiles: ["app"]
+    build:
+      context: .
+      target: dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # Inside the compose network the dependencies answer to their service
+      # names, not localhost. These override the values env_file just loaded,
+      # so a single .env drives both the native and the containerised path.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Pin the in-container port so the host mapping below cannot drift out
+      # of sync with whatever PORT the .env happens to set.
+      PORT: 3000
+    ports:
+      - "${PORT:-3000}:3000"
+      - "${DEBUG_PORT:-9229}:9229"
+    volumes:
+      # Source is bind-mounted for hot reload; the anonymous volume keeps the
+      # container's own node_modules from being shadowed by the host's, which
+      # matters because the two are built for different platforms.
+      - .:/app
+      - /app/node_modules
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
 volumes:
   postgres-data:
   redis-data:
