@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { config } from '@utils/config';
+import { TransactionHelper } from './helper';
+import { entities } from './persistence';
 
 @Module({
   imports: [
@@ -11,13 +13,16 @@ import { config } from '@utils/config';
       username: config.db.username,
       password: config.db.password,
       database: config.db.database,
-      // No entities yet — this module only establishes the connection the
-      // health check pings. Slice 1 adds entities and migrations.
-      entities: [],
+      // The same array `src/orm.ts` gives the migration CLI, so the schema the
+      // app expects and the schema the migrations produce cannot drift.
+      entities,
+      // Non-negotiable. See src/orm.ts.
       synchronize: false,
       autoLoadEntities: false,
+      migrationsRun: false,
     }),
   ],
-  exports: [TypeOrmModule],
+  providers: [TransactionHelper],
+  exports: [TypeOrmModule, TransactionHelper],
 })
 export class DatabaseModule {}

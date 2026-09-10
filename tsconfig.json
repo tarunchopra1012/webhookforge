@@ -26,12 +26,30 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
     "types": ["node", "jest"],
+    // The single source of truth for the alias map. jest.config.js derives
+    // its moduleNameMapper from this block via ts-jest's
+    // pathsToModuleNameMapper, so unit tests, e2e tests and the compiler can
+    // never disagree about where "@error" points.
+    //
+    // Targets carry NO file extension. TypeScript resolves "./src/type" to
+    // type.ts either way, but tsc-alias rewrites these literally into the
+    // build — a ".ts" here becomes require("./type.ts") in dist, which does
+    // not exist at runtime.
     "paths": {
+      "@types": ["./src/type"],
+      "@error": ["./src/error"],
+      "@constant": ["./src/constant"],
+      "@events": ["./src/event"],
+      "@config": ["./src/utils/config"],
+      "@logger": ["./src/utils/logger"],
+      "@filter": ["./src/utils/filter"],
+      "@interceptor": ["./src/utils/interceptor"],
+      "@decorator": ["./src/utils/decorator"],
+      "@utils/*": ["./src/utils/*"],
+      "@shared": ["./src/shared"],
       "@shared/*": ["./src/shared/*"],
-      "@types": ["./src/type.ts"],
-      "@persistence/*": ["./src/shared/database/persistence/*"],
-      "@decorator": ["./src/utils/decorator.ts"],
-      "@utils/*": ["./src/utils/*"]
+      "@helper": ["./src/shared/database/helper"],
+      "@persistence/*": ["./src/shared/database/persistence/*"]
     }
   },
   "ts-node": {

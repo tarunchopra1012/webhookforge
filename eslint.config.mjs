@@ -28,6 +28,26 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/interface-name-prefix': 'off',
+      // Kept on everywhere except controllers — see the override below.
+      '@typescript-eslint/only-throw-error': 'error',
+    },
+  },
+  {
+    // AppError deliberately does not extend Error: it is a domain outcome
+    // that travels by `throw` at exactly one boundary, so that a stray
+    // `catch (e) { if (e instanceof Error) }` elsewhere cannot mistake a
+    // business result for a crash.
+    //
+    // The Controller is that boundary and the only layer allowed to throw
+    // one, so the exemption is scoped to controllers rather than switched off
+    // project-wide. A `throw` anywhere else is still an error — which is
+    // exactly the layer rule the architecture doc states.
+    //
+    // The rule's `allow` option matches exact type names, so it cannot be
+    // used here: it would mean listing every AppError subclass by hand.
+    files: ['**/*.controller.ts', '**/*.e2e-spec.ts'],
+    rules: {
+      '@typescript-eslint/only-throw-error': 'off',
     },
   },
   {

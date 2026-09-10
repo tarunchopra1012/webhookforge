@@ -195,9 +195,26 @@ paths without edits.
 | `npm run dev:reset`  | Stop everything **and delete the Postgres and Redis data** |
 | `npm run dev:logs`   | Tail the app container                                     |
 
-| URL                            | What                                |
-| ------------------------------ | ----------------------------------- |
-| `http://localhost:3000/health` | Liveness — process, database, Redis |
+| URL                              | What                                       |
+| -------------------------------- | ------------------------------------------ |
+| `http://localhost:3000/health`   | Liveness — process, database, Redis        |
+| `http://localhost:3000/api`      | Swagger UI                                 |
+| `http://localhost:3000/api-json` | The OpenAPI document                       |
+
+| Migration command             | What                                              |
+| ----------------------------- | ------------------------------------------------- |
+| `npm run migration:generate`  | Diff the entities against the database, write one  |
+| `npm run migration:run`       | Apply pending migrations                          |
+| `npm run migration:revert`    | Undo the most recent one                          |
+| `npm run migration:show`      | List applied and pending                          |
+| `npm run migration:run:prod`  | Apply from `dist/`, for a built image             |
+
+Migrations talk to `localhost:5432` directly, so they work whether or not the
+optional `app` container is running. Pass the name when generating:
+
+```bash
+npm run migration:generate -- src/shared/database/migration/CreateTenantsTable
+```
 
 ### Verify it
 
@@ -244,14 +261,12 @@ work today. See [build status](#build-status) for what is actually implemented.
 
 | URL                             | What                | Arrives with |
 | ------------------------------- | ------------------- | ------------ |
-| `http://localhost:3000/api`     | Swagger UI          | Slice 1      |
 | `http://localhost:3000/metrics` | Prometheus metrics  | Slice 8      |
 | `http://localhost:3001`         | Grafana dashboards  | Slice 8      |
 | `http://localhost:3000/console` | Operator console    | Slice 9      |
 
 | Command                    | Arrives with |
 | -------------------------- | ------------ |
-| `npm run migration:run`    | Slice 1      |
 | `npm run start:worker`     | Slice 6      |
 | `npm run load-test`        | Slice 10     |
 
@@ -399,7 +414,7 @@ Dockerfile's `NODE_VERSION` build arg matches it.
 | Slice | Scope                                                                 | Status |
 | ----- | --------------------------------------------------------------------- | ------ |
 | 0     | Project scaffold, Docker, config, health                              | ✅     |
-| 1     | Platform spine — errors, filters, logging, `@Api()`, `BaseRepository` | ⬜     |
+| 1     | Platform spine — errors, filters, logging, `@Api()`, `BaseRepository` | ✅     |
 | 2     | Tenants + API-key auth                                                | ⬜     |
 | 3     | Codify the module pattern                                             | ⬜     |
 | 4     | Subscriptions                                                         | ⬜     |

@@ -61,6 +61,15 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   REDIS_PASSWORD?: string;
+
+  /**
+   * The no-color.org convention: any non-empty value disables ANSI colour in
+   * the log output. Set it when piping logs to a file, where the escape codes
+   * are just noise.
+   */
+  @IsOptional()
+  @IsString()
+  NO_COLOR?: string;
 }
 
 function loadEnv(): EnvironmentVariables {
@@ -96,6 +105,10 @@ export interface AppConfig {
     port: number;
     password?: string;
   };
+  log: {
+    /** Whether to write ANSI colour codes. See NO_COLOR above. */
+    color: boolean;
+  };
 }
 
 export const config: AppConfig = {
@@ -112,5 +125,12 @@ export const config: AppConfig = {
     host: env.REDIS_HOST,
     port: env.REDIS_PORT,
     password: env.REDIS_PASSWORD,
+  },
+  log: {
+    // Deliberately not gated on `process.stdout.isTTY`. A container started by
+    // `docker compose up -d` has no TTY, so a TTY check would strip the colour
+    // from `docker logs` — the one place it is most useful. Production writes
+    // JSON, which is never coloured, so this only affects the human format.
+    color: !env.NO_COLOR,
   },
 };

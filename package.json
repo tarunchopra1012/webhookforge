@@ -21,40 +21,22 @@
     "dev:logs": "docker compose logs -f app",
     "infra:start": "docker compose up -d",
     "infra:stop": "docker compose down --remove-orphans",
+    "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/orm.ts",
+    "migration:run": "typeorm-ts-node-commonjs migration:run -d src/orm.ts",
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/orm.ts",
+    "migration:show": "typeorm-ts-node-commonjs migration:show -d src/orm.ts",
+    "migration:run:prod": "typeorm migration:run -d dist/orm.js",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:e2e": "jest --config ./test/jest-e2e.json --forceExit"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node",
-    "moduleNameMapper": {
-      "^@shared/(.*)$": "<rootDir>/shared/$1",
-      "^@types$": "<rootDir>/type.ts",
-      "^@persistence/(.*)$": "<rootDir>/shared/database/persistence/$1",
-      "^@decorator$": "<rootDir>/utils/decorator.ts",
-      "^@utils/(.*)$": "<rootDir>/utils/$1"
-    }
+    "test:e2e": "jest --config ./test/jest-e2e.config.js --forceExit"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.3",
     "@nestjs/core": "^11.2.3",
     "@nestjs/platform-express": "^11.2.3",
+    "@nestjs/swagger": "^11.4.7",
     "@nestjs/terminus": "^11.0.0",
     "@nestjs/typeorm": "^11.0.3",
     "class-transformer": "^0.5.1",
@@ -64,7 +46,8 @@
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "typeorm": "0.3.31"
+    "typeorm": "0.3.31",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
