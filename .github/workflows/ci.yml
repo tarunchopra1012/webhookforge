@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+# A newer push to the same branch cancels the older run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint, build, test
+    runs-on: ubuntu-latest
+
+    # Real Postgres and Redis rather than mocks, because the e2e health spec
+    # asserts the checks actually reach their dependencies. Versions match
+    # docker-compose.yml.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: webhookforge
+          POSTGRES_PASSWORD: webhookforge
+          POSTGRES_DB: webhookforge
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U webhookforge"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # src/utils/config.ts validates these at import and throws on anything
+    # missing, so the job cannot start without them being correct.
+    env:
+      NODE_ENV: test
+      PORT: 3000
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: webhookforge
+      POSTGRES_PASSWORD: webhookforge
+      POSTGRES_DB: webhookforge
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Lint
+        run: npx eslint "{src,test}/**/*.ts"
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm test
+
+      - name: E2E tests
+        run: npm run test:e2e
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Builds the production stage only — if the Dockerfile rots, this fails
+      # here rather than the first time a deployment is attempted.
+      - name: Build production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: prod
+          push: false
+          load: true
+          tags: webhookforge:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image runs as a non-root user
+        run: |
+          uid=$(docker run --rm --entrypoint sh webhookforge:ci -c 'id -u')
+          echo "uid=$uid"
+          test "$uid" != "0"
+
+      - name: Image contains no source or dev toolchain
+        run: |
+          docker run --rm --entrypoint sh webhookforge:ci -c '
+            test ! -d /app/src || { echo "src/ leaked into the image"; exit 1; }
+            test ! -d /app/node_modules/jest || { echo "dev deps leaked"; exit 1; }
+            echo "image contents are clean"
+          '
