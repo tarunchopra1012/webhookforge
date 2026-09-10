@@ -1,5 +1,9 @@
 # WebhookForge
 
+<!-- Once this repo is pushed, replace <you> and uncomment:
+[![CI](https://github.com/<you>/webhookforge/actions/workflows/ci.yml/badge.svg)](https://github.com/<you>/webhookforge/actions/workflows/ci.yml)
+-->
+
 **A multi-tenant webhook delivery service.** Ingest events over HTTP, deliver
 them to subscriber endpoints with HMAC signing, exponential-backoff retries, a
 dead-letter queue, and per-tenant isolation.
@@ -371,6 +375,22 @@ Cases deliberately covered: idempotent ingest under concurrent duplicates,
 backoff schedule correctness, single-dead-letter guarantee, cross-tenant access
 denial on every read path, lock contention between two sweeper instances, and
 signature verification against tampered and stale requests.
+
+### Continuous integration
+
+`.github/workflows/ci.yml` runs on every push and on pull requests to `main`.
+
+The **test** job typechecks, lints, builds, and runs unit plus e2e specs
+against real Postgres 16 and Redis 7 service containers — same versions as
+`docker-compose.yml` — because the health spec asserts the checks actually
+reach their dependencies rather than a mock.
+
+The **docker** job builds the production image and asserts two properties that
+are easy to regress silently: the image runs as a non-root user, and it
+contains no application source and no dev dependencies.
+
+Node comes from `.nvmrc`, which is the single source of the version — the
+Dockerfile's `NODE_VERSION` build arg matches it.
 
 ---
 
